@@ -15,5 +15,5 @@ class ConsolePlayer(AbstractPlayer):
             except ValueError:
                 print("Invalid move!")
 
-    def name(self):
-        return "Console Player"
+    def get_name(self):
+        return self._name

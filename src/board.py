@@ -79,7 +79,7 @@ class CheckerBoard:
             t.join(self._time_limit)
             if not self._execute_move(player_piece, ret_val):
                 print("Invalid move {} by player {}"
-                      .format(ret_val, player.name))
+                      .format(ret_val, player.get_name()))
                 # Choose random valid move, taking into account forced capture
                 pieces = self._get_pieces(player_piece)
                 moves = []

@@ -12,7 +12,6 @@ class AbstractPlayer:
     def move(self, board, time_limit, ret_val):
         raise NotImplementedError("Derived class must implement move")
 
-    @property
     @abc.abstractmethod
-    def name(self):
+    def get_name(self):
         raise NotImplementedError("Derived class must implement name")
