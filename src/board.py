@@ -143,7 +143,7 @@ class CheckerBoard:
         :param move: Move to validate. Tuple in form ((x1,y1),(x2,y2)
         :returns bool: true if move is valid, false otherwise
         """
-        if player == self._board[move[0][0]][move[0][1]]:
+        if player == self._board[move[0][0]][move[0][1]].lower():
             _, available_moves = self._generate_moves(move[0])
             return move[1:] in available_moves
         else:
@@ -191,7 +191,7 @@ class CheckerBoard:
             board = copy.deepcopy(start_board)  # create copy to test jumps on
             x, y = loc[0] + step[0], loc[1] + step[1]
             if 0 <= x < self._board_size and 0 <= y < self._board_size:
-                if board[x][y] == ('w' if move_piece == 'b' else 'b'):
+                if isinstance(board[x][y], str) and board[x][y].lower() == ('w' if move_piece == 'b' else 'b'):
                     xp, yp = x + step[0], y + step[1]
                     if (0 <= xp < self._board_size and 0 <= yp < self._board_size and
                             board[xp][yp] == 0):
@@ -227,7 +227,6 @@ class CheckerBoard:
         :param w_or_b: 'w' for white player pieces, 'b' for black player pieces. Other values invalid.
         :returns list: List of location tuples
         """
-        # TODO: Verify king pieces are included properly
         return [(ix, iy) for ix, row in enumerate(self._board) for iy, i in enumerate(row) if isinstance(i, str) and i.lower() == w_or_b]
 
 
