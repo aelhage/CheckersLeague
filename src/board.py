@@ -1,6 +1,7 @@
 from random import shuffle
 from players.interface import AbstractPlayer
 from players.console import ConsolePlayer
+from players.simple_ai import SimpleAI
 from threading import Thread
 import copy
 from random import choice
@@ -19,11 +20,11 @@ class CheckerBoard:
         :raises ValueError: if board_size is not an even number
         """
         if not issubclass(player1, AbstractPlayer):
-            raise TypeError("Player 1 did not implement AbstractPlayer")
+            raise TypeError('Player 1 did not implement AbstractPlayer')
         elif not issubclass(player2, AbstractPlayer):
-            raise TypeError("Player 2 did not implement AbstractPlayer")
+            raise TypeError('Player 2 did not implement AbstractPlayer')
         if not board_size % 2 == 0:
-            raise ValueError("Board size must be divisible by 2")
+            raise ValueError('Board size must be divisible by 2')
 
         # Randomly select player 1, ie, which goes first
         players = [player1, player2]
@@ -70,15 +71,16 @@ class CheckerBoard:
         move_ind = 0
         # Until end game conditions met
         while not self._check_end_game():
-            self.print()
             player_piece, player = players[move_ind % 2]
+            print('{} turn ({}):'.format(player.get_name(), 'white' if player_piece == 'w' else 'black'))
+            self.print()
             # Start a new thread to wait for Player move
             ret_val = []  # list representing move returned from player
             t = Thread(target=player.move, args=(copy.copy(self._board), self._time_limit, ret_val))
             t.start()
             t.join(self._time_limit)
             if not self._execute_move(player_piece, ret_val):
-                print("Invalid move {} by player {}"
+                print('Invalid move {} by player {}'
                       .format(ret_val, player.get_name()))
                 # Choose random valid move, taking into account forced capture
                 pieces = self._get_pieces(player_piece)
@@ -93,7 +95,7 @@ class CheckerBoard:
                         moves.extend(piece_moves)
                 move = choice(jumps) if len(jumps) > 0 else choice(moves)
                 self._execute_move(player_piece, move)
-                print("Playing random move instead: {}".format(move))
+                print('Playing random move instead: {}'.format(move))
             move_ind += 1
         # TODO: Log and print winner
 
@@ -204,7 +206,8 @@ class CheckerBoard:
                             board[xp][yp] = board[xp][yp].upper()
 
                         jumps.append([(xp, yp)])
-                        jumps.extend([[(xp, yp)] + jump_extension for jump_extension in self._generate_moves((xp, yp), board)[1]])
+                        jumps.extend([[(xp, yp)] + jump_extension
+                                      for jump_extension in self._generate_moves((xp, yp), board)[1]])
                 elif board[x][y] == 0 and not jumps_only:
                     moves.append([(x, y)])
         return (True, jumps) if len(jumps) or jumps_only > 0 else (False, moves)
@@ -227,11 +230,14 @@ class CheckerBoard:
         :param w_or_b: 'w' for white player pieces, 'b' for black player pieces. Other values invalid.
         :returns list: List of location tuples
         """
-        return [(ix, iy) for ix, row in enumerate(self._board) for iy, i in enumerate(row) if isinstance(i, str) and i.lower() == w_or_b]
+        return [(ix, iy)
+                for ix, row in enumerate(self._board)
+                for iy, i in enumerate(row)
+                if isinstance(i, str) and i.lower() == w_or_b]
 
 
 def main():
-    cb = CheckerBoard(ConsolePlayer, ConsolePlayer, 8, 1)
+    cb = CheckerBoard(ConsolePlayer, SimpleAI, 8, 1)
     cb.play()
 
 
