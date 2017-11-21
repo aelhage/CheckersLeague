@@ -36,9 +36,9 @@ class ProcessingNode:
             return sum([(1 if i.lower() == self._player else -1) * (1 if i.islower() else 3)
                         for row in self._board for i in row if i != 0 and i != '_'])
         elif self._mover == self._player:
-            return min([c.calculate_utility() for c in self._children])
-        else:
             return max([c.calculate_utility() for c in self._children])
+        else:
+            return min([c.calculate_utility() for c in self._children])
 
     def generate_child_nodes(self):
         child_mover = 'b' if self._mover == 'w' else 'w'
