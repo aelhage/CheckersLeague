@@ -8,7 +8,7 @@ class ConsolePlayer(AbstractPlayer):
 
     def move(self, board, time_limit, ret_val):
         while True:
-            user_input = input("Enter you move in the format 'from_x,from_y; to_x, to_y':")
+            user_input = input("Enter you move in the format 'from_row,from_col;to_row,to_col':")
             try:
                 ret_val.extend(tuple(tuple(int(x.strip()) for x in loc.split(',')) for loc in user_input.split(';')))
                 break

@@ -14,9 +14,11 @@ class SimpleAI(AbstractPlayer):
         nodes = collections.deque()
         root_node = ProcessingNode(board, self._player, self._player)
         nodes.append(root_node)
+        # Build game tree breadth-first until time expires
         while time.monotonic() < end_time and len(nodes) > 0:
             node = nodes.popleft()
             nodes.extend(node.generate_child_nodes())
+        # Best move needs to be added to ret_val to return to caller since this will be running on a separate thread
         ret_val.extend(root_node.get_best_move())
 
     def get_name(self):
@@ -24,7 +26,15 @@ class SimpleAI(AbstractPlayer):
 
 
 class ProcessingNode:
+    """A ProcessingNode represents a node in the game tree."""
     def __init__(self, board, player, mover, move=None):
+        """Inits a ProcessingNode with the specified parameters.
+
+        :param board: Board representation at this node.
+        :param player: Player whose optimal move the game tree is solving for. 'w' for white, 'b' for black.
+        :param mover: Player who moves next after reaching specified board. 'w' for white, 'b' for black.
+        :param move: Move which resulted in reaching this node.
+        """
         self._children = []
         self._player = player
         self._board = board
@@ -32,15 +42,23 @@ class ProcessingNode:
         self.move = move
 
     def calculate_utility(self):
+        """Calculate the utility of the move represented by this node."""
         if len(self._children) == 0:
+            # If there are no children, this is leaf node. Utility based on pieces on the board.
             return sum([(1 if i.lower() == self._player else -1) * (1 if i.islower() else 3)
                         for row in self._board for i in row if i != 0 and i != '_'])
         elif self._mover == self._player:
+            # If this node represents a move by this player, the optimal move will be chosen, so return max of children
             return max([c.calculate_utility() for c in self._children])
         else:
+            # If this node represents a move by opponent, assume opponent will play optimally, so return min of children
             return min([c.calculate_utility() for c in self._children])
 
     def generate_child_nodes(self):
+        """Creates children nodes in the game tree.
+
+        :return list: List of ProcessingNode descendants of this node.
+        """
         child_mover = 'b' if self._mover == 'w' else 'w'
         self._children.clear()
         pieces = self._get_pieces()
@@ -66,9 +84,14 @@ class ProcessingNode:
         return self._children
 
     def get_best_move(self):
+        """Returns the move corresponding to the child node with the highest utility."""
         return max(self._children, key=lambda c: c.calculate_utility()).move
 
     def _get_pieces(self):
+        """Gets a list of piece locations for the mover of this node.
+
+        :returns list: List of location tuples
+        """
         return [(ix, iy)
                 for ix, row in enumerate(self._board)
                 for iy, i in enumerate(row)
@@ -80,7 +103,7 @@ class ProcessingNode:
         Valid moves for the piece at loc. Moves are represented as a list of locations, eg, [(x1,y1),(x2,y2)], including
         the starting location.
 
-        If a board is not provided, only valid jumps (not all moves) will be returned. The intention is a board is only
+        If a board is provided, only valid jumps (not all moves) will be returned. The intention is a board is only
         provided when this is called recursively, checking for multiple jumps.
 
         :param loc: Location of piece to check

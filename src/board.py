@@ -14,10 +14,10 @@ class CheckerBoard:
 
         :param player1: Class to initialize first player from.
         :param player2: Class to initialize second player from.
-        :param board_size: Size of the square board to be used. Must be even.
+        :param board_size: Size of the square board to be used. Must be even and >= 4.
         :param time_limit: Time in seconds each player has to act
         :raises TypeError: if player1 or player2 not subclass of AbstractPlayer
-        :raises ValueError: if board_size is not an even number
+        :raises ValueError: if board_size is not an even number or less than 4
         """
         if not issubclass(player1, AbstractPlayer):
             raise TypeError('Player 1 did not implement AbstractPlayer')
@@ -25,6 +25,8 @@ class CheckerBoard:
             raise TypeError('Player 2 did not implement AbstractPlayer')
         if not board_size % 2 == 0:
             raise ValueError('Board size must be divisible by 2')
+        if board_size < 4:
+            raise ValueError("Board size must be at least 4")
 
         # Randomly select player 1, ie, which goes first
         players = [player1, player2]
@@ -70,7 +72,7 @@ class CheckerBoard:
         players = [('w', self._white_player), ('b', self._black_player)]
         move_ind = 0
         # Until end game conditions met
-        while not self._check_end_game():
+        while not self._get_winner():
             player_piece, player = players[move_ind % 2]
             print('{} turn ({}):'.format(player.get_name(), 'white' if player_piece == 'w' else 'black'))
             self.print()
@@ -98,10 +100,14 @@ class CheckerBoard:
                 print('Playing random move instead: {}'.format(move))
             move_ind += 1
         # TODO: Log and print winner
+        return self._get_winner()
 
     def print(self):
-        print('\n'.join([''.join(['{:^3}'.format(item) for item in row])
-                         for row in self._board]))
+        """Prints a representation of the board to the console"""
+        board = '   ' + ''.join(['{:^3}'.format(i) for i in range(self._board_size)]) + '\n'
+        board += '\n'.join([''.join(['{:^3}'.format(item) for item in [row_ind] + row])
+                            for row_ind, row in enumerate(self._board)])
+        print(board)
 
     def _execute_move(self, player, move):
         """Executes specified move if valid.
@@ -151,12 +157,13 @@ class CheckerBoard:
         else:
             return False
 
-    def _check_end_game(self):
+    def _get_winner(self):
         """Checks for end game status and returns winner
 
         :returns str: 'w' if white wins, 'b' if black wins, None otherwise
         """
         # TODO: Implement other end game conditions besides no moves available
+        # TODO: Only check for no moves for current player
         black_pieces = self._get_pieces('b')
         black_move_count = sum([len(self._generate_moves(piece)[1]) for piece in black_pieces])
         if black_move_count == 0:
@@ -174,7 +181,7 @@ class CheckerBoard:
         that this does not include the starting location. Also note that if the move is a single jump, eg, from (loc[0],
         loc[1]) to (x1,y1), the end location will still be in a list, ie, [(x1,y1)].
 
-        If a board is not provided, only valid jumps (not all moves) will be returned. The intention is a board is only
+        If a board is provided, only valid jumps (not all moves) will be returned. The intention is a board is only
         provided when this is called recursively, checking for multiple jumps.
 
         :param loc: Location of piece to check
@@ -225,7 +232,7 @@ class CheckerBoard:
         return steps
 
     def _get_pieces(self, w_or_b):
-        """Gets a list of piece locations for the specified players
+        """Gets a list of piece locations for the specified players.
 
         :param w_or_b: 'w' for white player pieces, 'b' for black player pieces. Other values invalid.
         :returns list: List of location tuples
