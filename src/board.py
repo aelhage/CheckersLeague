@@ -1,5 +1,3 @@
-from random import shuffle
-from players.interface import AbstractPlayer
 from players.console import ConsolePlayer
 from players.simple_ai import SimpleAI
 from threading import Thread
@@ -9,34 +7,19 @@ from random import choice
 
 class CheckerBoard:
     """The CheckerBoard manages a Checkers match between two players."""
-    def __init__(self, player1, player2, board_size, time_limit):
+    def __init__(self, board_size):
         """Inits a CheckerBoard with the specified parameters.
 
-        :param player1: Class to initialize first player from.
-        :param player2: Class to initialize second player from.
         :param board_size: Size of the square board to be used. Must be even and >= 4.
-        :param time_limit: Time in seconds each player has to act
-        :raises TypeError: if player1 or player2 not subclass of AbstractPlayer
         :raises ValueError: if board_size is not an even number or less than 4
         """
-        if not issubclass(player1, AbstractPlayer):
-            raise TypeError('Player 1 did not implement AbstractPlayer')
-        elif not issubclass(player2, AbstractPlayer):
-            raise TypeError('Player 2 did not implement AbstractPlayer')
         if not board_size % 2 == 0:
             raise ValueError('Board size must be divisible by 2')
         if board_size < 4:
             raise ValueError("Board size must be at least 4")
 
-        # Randomly select player 1, ie, which goes first
-        players = [player1, player2]
-        shuffle(players)
-        self._white_player = players[0](board_size, 1)
-        self._black_player = players[1](board_size, 2)
-        # TODO: Log player names, pieces
-
-        self._time_limit = time_limit
         self._board_size = board_size
+        self.current_player = 'w'
 
         """
         Build board to desired size.
@@ -64,44 +47,6 @@ class CheckerBoard:
             self._board.append(row)
             row_ind += 1
 
-    def play(self):
-        """Starts a Checkers match and returns the name of the winner.
-
-        :returns string: Name of winning player.
-        """
-        players = [('w', self._white_player), ('b', self._black_player)]
-        move_ind = 0
-        # Until end game conditions met
-        while not self._get_winner():
-            player_piece, player = players[move_ind % 2]
-            print('{} turn ({}):'.format(player.get_name(), 'white' if player_piece == 'w' else 'black'))
-            self.print()
-            # Start a new thread to wait for Player move
-            ret_val = []  # list representing move returned from player
-            t = Thread(target=player.move, args=(copy.copy(self._board), self._time_limit, ret_val))
-            t.start()
-            t.join(self._time_limit)
-            if not self._execute_move(player_piece, ret_val):
-                print('Invalid move {} by player {}'
-                      .format(ret_val, player.get_name()))
-                # Choose random valid move, taking into account forced capture
-                pieces = self._get_pieces(player_piece)
-                moves = []
-                jumps = []
-                for piece in pieces:
-                    is_jump, piece_moves = self._generate_moves(piece)
-                    piece_moves = [[piece] + move for move in piece_moves]
-                    if is_jump:
-                        jumps.extend(piece_moves)
-                    else:
-                        moves.extend(piece_moves)
-                move = choice(jumps) if len(jumps) > 0 else choice(moves)
-                self._execute_move(player_piece, move)
-                print('Playing random move instead: {}'.format(move))
-            move_ind += 1
-        # TODO: Log and print winner
-        return self._get_winner()
-
     def print(self):
         """Prints a representation of the board to the console"""
         board = '   ' + ''.join(['{:^3}'.format(i) for i in range(self._board_size)]) + '\n'
@@ -109,10 +54,11 @@ class CheckerBoard:
                             for row_ind, row in enumerate(self._board)])
         print(board)
 
-    def _execute_move(self, player, move):
+    def execute_move(self, move):
         """Executes specified move if valid.
 
-        :param player: Character representing which player is moving, 'w' or 'b'
+        If a move is successfully executed, current_player is rotated to the next player.
+
         :param move: Move to execute
         :returns bool: true if move is executed successfully, false otherwise
         """
@@ -123,12 +69,13 @@ class CheckerBoard:
         # Group moves into pairs to handle multiple jumps
         move_pairs = [[move[i], move[i+1]] for i in range(len(move) - 1)]
         for pair in move_pairs:
-            if self._validate_move(player, pair):
+            if self._validate_move(pair):
                 valid_move = True
                 self._board[pair[1][0]][pair[1][1]] = self._board[pair[0][0]][pair[0][1]]
                 self._board[pair[0][0]][pair[0][1]] = 0
                 # A pawn is promoted when it reaches the last row
-                if (pair[1][0] == self._board_size - 1 and player == 'w') or (pair[1][0] == 0 and player == 'b'):
+                if ((pair[1][0] == self._board_size - 1 and self.current_player == 'w') or
+                        (pair[1][0] == 0 and self.current_player == 'b')):
                     self._board[pair[1][0]][pair[1][1]] = self._board[pair[1][0]][pair[1][1]].upper()
                 # A piece is removed if jumped over
                 if abs(pair[1][0] - pair[0][0]) == 2:
@@ -138,51 +85,49 @@ class CheckerBoard:
             else:
                 valid_move = False
                 break
-        # If full move was invalid, restore board to state prior to executing any moves
-        if not valid_move:
+        if valid_move:
+            # If move is valid, rotate to the next player
+            self.current_player = 'w' if self.current_player == 'b' else 'b'
+        else:
+            # If full move was invalid, restore board to state prior to executing any moves
             self._board = temp_board
         # TODO: Log each move
         return valid_move
 
-    def _validate_move(self, player, move):
-        """Determines whether the move *to* location is a valid end position for piece in *from* location
+    def _validate_move(self, move):
+        """Determines whether the move *to* location is a valid end position for piece in *from* location.
 
-        :param player: Character representing which player is moving, 'w' or 'b'
-        :param move: Move to validate. Tuple in form ((x1,y1),(x2,y2)
+        This method generates all valid moves for the starting location in move, and then checks whether the move is in
+        this set. It also checks that the piece at the starting location belongs to the current player.
+
+        :param move: Move to validate. Tuple in form ((x1,y1),(x2,y2))
         :returns bool: true if move is valid, false otherwise
         """
-        if player == self._board[move[0][0]][move[0][1]].lower():
-            _, available_moves = self._generate_moves(move[0])
-            return move[1:] in available_moves
+        # TODO: Need to check whether any jumps are available from other pieces
+        if self.current_player == self._board[move[0][0]][move[0][1]].lower():
+            _, available_moves = self.generate_moves(move[0])
+            return move in available_moves
         else:
             return False
 
-    def _get_winner(self):
-        """Checks for end game status and returns winner
+    def get_winner(self):
+        """Checks for end game status and returns winner.
 
         :returns str: 'w' if white wins, 'b' if black wins, None otherwise
         """
         # TODO: Implement other end game conditions besides no moves available
-        # TODO: Only check for no moves for current player
-        black_pieces = self._get_pieces('b')
-        black_move_count = sum([len(self._generate_moves(piece)[1]) for piece in black_pieces])
-        if black_move_count == 0:
-            return 'w'
-        white_pieces = self._get_pieces('w')
-        white_move_count = sum([len(self._generate_moves(piece)[1]) for piece in white_pieces])
-        if white_move_count == 0:
-            return 'b'
+        pieces = self.get_pieces(self.current_player)
+        move_count = sum([len(self.generate_moves(piece)[1]) for piece in pieces])
+        if move_count == 0:
+            return 'b' if self.current_player == 'w' else 'w'
         return None
 
-    def _generate_moves(self, loc, start_board=None):
+    def generate_moves(self, loc, start_board=None):
         """Generates list of valid moves for the piece at loc.
 
-        Valid moves for the piece at loc. Moves are represented as a list of locations, eg, [(x1,y1),(x2,y2)]. Note
-        that this does not include the starting location. Also note that if the move is a single jump, eg, from (loc[0],
-        loc[1]) to (x1,y1), the end location will still be in a list, ie, [(x1,y1)].
-
-        If a board is provided, only valid jumps (not all moves) will be returned. The intention is a board is only
-        provided when this is called recursively, checking for multiple jumps.
+        Valid moves for the piece at loc. Moves are represented as a list of locations, eg, [(x1,y1),(x2,y2)], including
+        the starting location. If a board is provided, only valid jumps (not all moves) will be returned. The intention
+        is a board is only provided when this is called recursively, checking for multiple jumps.
 
         :param loc: Location of piece to check
         :param start_board: Board to generate moves for. If not provided, current board state is used.
@@ -212,11 +157,11 @@ class CheckerBoard:
                         if (xp == self._board_size - 1 and move_piece == 'w') or (xp == 0 and move_piece == 'b'):
                             board[xp][yp] = board[xp][yp].upper()
 
-                        jumps.append([(xp, yp)])
-                        jumps.extend([[(xp, yp)] + jump_extension
-                                      for jump_extension in self._generate_moves((xp, yp), board)[1]])
+                        jumps.append([loc, (xp, yp)])
+                        jumps.extend([[loc] + jump_extension
+                                      for jump_extension in self.generate_moves((xp, yp), board)[1]])
                 elif board[x][y] == 0 and not jumps_only:
-                    moves.append([(x, y)])
+                    moves.append([loc, (x, y)])
         return (True, jumps) if len(jumps) or jumps_only > 0 else (False, moves)
 
     @staticmethod
@@ -231,7 +176,10 @@ class CheckerBoard:
             steps.extend(black_steps)
         return steps
 
-    def _get_pieces(self, w_or_b):
+    def __getitem__(self, item):
+        return self._board[item]
+
+    def get_pieces(self, w_or_b):
         """Gets a list of piece locations for the specified players.
 
         :param w_or_b: 'w' for white player pieces, 'b' for black player pieces. Other values invalid.
@@ -244,8 +192,41 @@ class CheckerBoard:
 
 
 def main():
-    cb = CheckerBoard(ConsolePlayer, SimpleAI, 8, 1)
-    cb.play()
+    time_limit = 1
+    board_size = 8
+    cb = CheckerBoard(board_size)
+    players = [('w', SimpleAI(board_size, 1)), ('b', ConsolePlayer(board_size, 2))]
+    move_ind = 0
+    # Until end game conditions met
+    while not cb.get_winner():
+        player_piece, player = players[move_ind % 2]
+        print('{} turn ({}):'.format(player.get_name(), 'white' if player_piece == 'w' else 'black'))
+        cb.print()
+        # Start a new thread to wait for Player move
+        ret_val = []  # list representing move returned from player
+        t = Thread(target=player.move, args=(copy.deepcopy(cb), time_limit, ret_val))
+        t.start()
+        t.join(time_limit)
+        if not cb.execute_move(ret_val):
+            print('Invalid move {} by player {}'
+                  .format(ret_val, player.get_name()))
+            # Choose random valid move, taking into account forced capture
+            pieces = cb.get_pieces(player_piece)
+            moves = []
+            jumps = []
+            for piece in pieces:
+                is_jump, piece_moves = cb.generate_moves(piece)
+                if is_jump:
+                    jumps.extend(piece_moves)
+                else:
+                    moves.extend(piece_moves)
+            move = choice(jumps) if len(jumps) > 0 else choice(moves)
+            cb.execute_move(move)
+            print('Playing random move instead: {}'.format(move))
+        move_ind += 1
+        # TODO: Log and winner
+    cb.print()
+    print("The winner is {}!".format(players[0 if cb.get_winner() == 'w' else 1][1].get_name()))
 
 
 if __name__ == '__main__':
