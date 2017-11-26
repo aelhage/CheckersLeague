@@ -116,7 +116,7 @@ class CheckerBoard:
         :returns str: 'w' if white wins, 'b' if black wins, None otherwise
         """
         # TODO: Implement other end game conditions besides no moves available
-        pieces = self.get_pieces(self.current_player)
+        pieces = self.get_locations_by_color(self.current_player)
         move_count = sum([len(self.generate_moves(piece)[1]) for piece in pieces])
         if move_count == 0:
             return 'b' if self.current_player == 'w' else 'w'
@@ -179,7 +179,18 @@ class CheckerBoard:
     def __getitem__(self, item):
         return self._board[item]
 
-    def get_pieces(self, w_or_b):
+    def get_pieces(self):
+        """Gets a list of all player pieces on the board.
+
+        :returns list: List of tuples where first element is the piece ('w', 'W', 'b', or 'B'), and the second element
+        is the location tuple.
+        """
+        return [(i, (ix, iy))
+                for ix, row in enumerate(self._board)
+                for iy, i in enumerate(row)
+                if isinstance(i, str) and i.isalpha()]
+
+    def get_locations_by_color(self, w_or_b):
         """Gets a list of piece locations for the specified players.
 
         :param w_or_b: 'w' for white player pieces, 'b' for black player pieces. Other values invalid.
@@ -211,7 +222,7 @@ def main():
             print('Invalid move {} by player {}'
                   .format(ret_val, player.get_name()))
             # Choose random valid move, taking into account forced capture
-            pieces = cb.get_pieces(player_piece)
+            pieces = cb.get_locations_by_color(player_piece)
             moves = []
             jumps = []
             for piece in pieces:

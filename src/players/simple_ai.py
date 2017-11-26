@@ -58,7 +58,7 @@ class ProcessingNode:
         :return list: List of ProcessingNode descendants of this node.
         """
         self._children.clear()
-        pieces = self._board.get_pieces(self._board.current_player)
+        pieces = self._board.get_locations_by_color(self._board.current_player)
         for piece in pieces:
             _, moves = self._board.generate_moves(piece)
             for move in moves:
