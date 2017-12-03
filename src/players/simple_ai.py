@@ -10,7 +10,7 @@ class SimpleAI(AbstractPlayer):
 
     def move(self, board, time_limit, ret_val):
         start_time = time.monotonic()
-        end_time = start_time + 0.95 * time_limit  # Only use a portion of allotted to account for overhead
+        end_time = start_time + 0.85 * time_limit  # Only use a portion of allotted to account for overhead
         nodes = collections.deque()
         root_node = ProcessingNode(board, self._player)
         nodes.append(root_node)
@@ -59,13 +59,22 @@ class ProcessingNode:
         """
         self._children.clear()
         pieces = self._board.get_locations_by_color(self._board.current_player)
+        all_moves = []
+        all_jumps = []
         for piece in pieces:
-            _, moves = self._board.generate_moves(piece)
+            is_jump, moves = self._board.generate_moves(piece)
             for move in moves:
                 # Execute move on copy of board and create new node
                 board_copy = copy.deepcopy(self._board)
                 board_copy.execute_move(move)
-                self._children.append(ProcessingNode(board_copy, self._player, move))
+                if is_jump:
+                    all_jumps.append(ProcessingNode(board_copy, self._player, move))
+                else:
+                    all_moves.append(ProcessingNode(board_copy, self._player, move))
+        if len(all_jumps) > 0:
+            self._children.extend(all_jumps)
+        else:
+            self._children.extend(all_moves)
         return self._children
 
     def get_best_move(self):
