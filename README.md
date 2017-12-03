@@ -4,7 +4,7 @@ A framework for supporting checkers tournaments for real and AI players
 ## Rules of the Game
 A checker board is instantiated with a specific board size (any even number >=4) and time limit for each player to make a move. White and black pieces are arranged on opposing sides. Pieces are placed on alternating squares on their respective sides. The two middle rows of the board are left vacant. This means that for a board size of `n`, there will be `(1/2)(n * (n - 1))` starting pieces for each player.
 
-![sample board](../images/board_sample.png)
+![sample board](images/board_sample.png)
 
 The game will begin with the movement of the white player, with each player alternating after that. For any player, if a valid move is not played within the time limit, a random valid move will be chosen for them.
 
