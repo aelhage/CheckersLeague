@@ -20,6 +20,7 @@ class CheckerBoard:
 
         self._board_size = board_size
         self.current_player = 'w'
+        self._end_game_move_count = 0  # The number of moves since a capture or promotion to king
 
         """
         Build board to desired size.
@@ -64,6 +65,7 @@ class CheckerBoard:
         """
         # TODO: Check whether move is valid format
         valid_move = False
+        jump_or_king = False  # Indicates this move was a capture or a promotion to king
         # Create temp backup of board in case moves need to be undone
         temp_board = copy.deepcopy(self._board)
         # Group moves into pairs to handle multiple jumps
@@ -76,18 +78,26 @@ class CheckerBoard:
                 # A pawn is promoted when it reaches the last row
                 if ((pair[1][0] == self._board_size - 1 and self.current_player == 'w') or
                         (pair[1][0] == 0 and self.current_player == 'b')):
+                    # If piece was not already a king, this resets end game counter
+                    if self._board[pair[1][0]][pair[1][1]].islower():
+                        jump_or_king = True
                     self._board[pair[1][0]][pair[1][1]] = self._board[pair[1][0]][pair[1][1]].upper()
                 # A piece is removed if jumped over
                 if abs(pair[1][0] - pair[0][0]) == 2:
                     xp = (pair[0][0] + pair[1][0]) // 2
                     yp = (pair[0][1] + pair[1][1]) // 2
                     self._board[xp][yp] = 0
+                    jump_or_king = True
             else:
                 valid_move = False
                 break
         if valid_move:
             # If move is valid, rotate to the next player
             self.current_player = 'w' if self.current_player == 'b' else 'b'
+            if jump_or_king:
+                self._end_game_move_count = 0
+            else:
+                self._end_game_move_count += 1
         else:
             # If full move was invalid, restore board to state prior to executing any moves
             self._board = temp_board
@@ -113,13 +123,21 @@ class CheckerBoard:
     def get_winner(self):
         """Checks for end game status and returns winner.
 
-        :returns str: 'w' if white wins, 'b' if black wins, None otherwise
+        :returns str: 'w' if white wins, 'b' if black wins, 'd' if draw, None otherwise
         """
-        # TODO: Implement other end game conditions besides no moves available
         pieces = self.get_locations_by_color(self.current_player)
         move_count = sum([len(self.generate_moves(piece)[1]) for piece in pieces])
         if move_count == 0:
             return 'b' if self.current_player == 'w' else 'w'
+        if self._end_game_move_count == 40:
+            opponent_player = 'w' if self.current_player == 'b' else 'w'
+            opponent_pieces = self.get_locations_by_color(opponent_player)
+            if len(pieces) > len(opponent_pieces):
+                return self.current_player
+            elif len(opponent_pieces) > len(pieces):
+                return opponent_player
+            else:
+                return 'd'
         return None
 
     def generate_moves(self, loc, start_board=None):
