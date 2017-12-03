@@ -113,9 +113,15 @@ class CheckerBoard:
         :param move: Move to validate. Tuple in form ((x1,y1),(x2,y2))
         :returns bool: true if move is valid, false otherwise
         """
-        # TODO: Need to check whether any jumps are available from other pieces
         if self.current_player == self._board[move[0][0]][move[0][1]].lower():
-            _, available_moves = self.generate_moves(move[0])
+            is_jump, available_moves = self.generate_moves(move[0])
+            if not is_jump:
+                # If this piece does not have any jumps, check if any other pieces have jumps (forced capture rule)
+                pieces = self.get_locations_by_color(self.current_player)
+                for piece in pieces:
+                    is_jump, _ = self.generate_moves(piece)
+                    if is_jump:
+                        return False
             return move in available_moves
         else:
             return False
