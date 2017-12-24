@@ -34,13 +34,13 @@ class Server(object):
     def send(self, client, data):
         if not client:
             raise Exception('Cannot send data, no client is connected')
-        _send(client, data)
+        json_send(client, data)
         return self
 
     def recv(self, client):
         if not client:
             raise Exception('Cannot receive data, no client is connected')
-        return _recv(client)
+        return json_recv(client)
 
     def close(self):
         if self.socket:
@@ -79,13 +79,13 @@ class Client(object):
     def send(self, data):
         if not self.socket:
             raise Exception('You have to connect first before sending data')
-        _send(self.socket, data)
+        json_send(self.socket, data)
         return self
 
     def recv(self):
         if not self.socket:
             raise Exception('You have to connect first before receiving data')
-        return _recv(self.socket)
+        return json_recv(self.socket)
 
     def recv_and_close(self):
         data = self.recv()
@@ -99,7 +99,7 @@ class Client(object):
 
 
 # helper functions #
-def _send(socket, data):
+def json_send(socket, data):
     print(data)
     try:
         serialized = json.dumps(data)
@@ -111,7 +111,7 @@ def _send(socket, data):
     socket.sendall(serialized.encode())
 
 
-def _recv(socket):
+def json_recv(socket):
     # read the length of the data, letter by letter until we reach EOL
     length_str = ''
     char = str(socket.recv(1).decode())

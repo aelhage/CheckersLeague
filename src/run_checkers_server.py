@@ -17,14 +17,15 @@ import copy
 from utils import Spinner
 from utils.jsonsocket import Server
 from msgs.messages import *
+from board_server import CheckerBoardServer
 
 # Define the global checkers server object
-cs = object
+gs = object
 
 
-class CheckersServer:
-    def __init__(self, tcp_port, timeout, max_games):
-        """ Initializes a Checkers Game Server
+class GameServer:
+    def __init__(self, tcp_port, timeout, max_games, num_players):
+        """ Initializes a Game Server
 
         """
         # Input check
@@ -33,7 +34,7 @@ class CheckersServer:
         self._tcp_port = tcp_port
         self._max_games = max_games
         self._timeout = timeout
-        self._num_players = 2
+        self._num_players = num_players
 
         # Create a list of our threads
         self._game_threads = []
@@ -41,7 +42,7 @@ class CheckersServer:
         self._spinner = object
 
     def open_socket(self):
-        print("[+] Opening Server Socket ...\n")
+        print("[+] Opening Server Socket ...")
         # Open the socket - TCP Socket Stream
         self._server = Server(socket.gethostname(), self._tcp_port, self._timeout)
 
@@ -49,10 +50,11 @@ class CheckersServer:
         self._server.close()
 
     def run(self):
-        print("[+] Running Server ...\n")
+        print("[+] Running Server ...")
         # Keep accepting connections
         # Initialize a list of clients
         clients = []
+        client_info = []
         num_clients = 0
 
         # Launch the spinner in another thread.... Just for coolness.
@@ -75,26 +77,34 @@ class CheckersServer:
                     # Try casting that message to a connection request
                     conReq = ConnectionRequest()
                     conReq.from_dict(msg)
+                    id = conReq.id
                     name = conReq.name
+
+                    # Ensure the ID is correct
+                    if id != MESSAGE_ID["CONNECTION_REQUEST"].value:
+                        print("[.] Wrong Message Received.  Expected ID: " + str(MESSAGE_ID["CONNECTION_REQUEST"].value)
+                              + ", RECEIVED ID: " + str(id))
+                        raise Exception("Invalid Message")
 
                     # If the message doesn't have the name field populated from the message dictionary, this is invalid
                     if not name:
-                        raise Exception("No Name!")
+                        raise Exception("Invalid Message")
 
                 except Exception:
                     # If any errors where thrown during when trying to read the message, return an error and close the
                     # client connection
                     print("[-] Invalid Message Received from IP Address " + str(client_addr[0]) +
-                          ", Port " + str(client_addr[1]) + "\n")
+                          ", Port " + str(client_addr[1]))
 
                     self._server.send(client, dict(ErrorMessage(ERRORS.INVALID_MSG)))
                     client.close()
                     continue
 
-                # The message was received succesfully!  Print the name
+                print(type(client))
+                # The message was received successfully!  Print the name
                 print("[+] New Client " + name + " at IP Address " + str(client_addr[0]) +
-                      ", Port " + str(client_addr[1]) + "\n")
-                print("[.] Num Clients: " + str(num_clients) + "\n")
+                      ", Port " + str(client_addr[1]))
+                print("[.] Num Clients: " + str(num_clients))
 
                 # Add the new client to the current clients list
                 clients.append(client)
@@ -108,41 +118,47 @@ class CheckersServer:
             for idx, client in enumerate(clients):
                 try:
                     data = self._server.recv(client)
-                except Exception:
+                except socket.timeout:
                     continue
 
                 if not data:
                     print("[-] Dead client idx " + str(idx) + " at IP address " + str(client[1][0]) + " and port " +
-                          str(client[1][1]) + str("\n"))
+                          str(client[1][1]))
                     num_clients -= 1
                     conn.close_client()
                     del clients[idx]
 
             if len(clients) < self._num_players:
-                print("[.] Not Enough Players... Still Searching...\n")
+                print("[.] Not Enough Players... Still Searching...")
                 continue
 
             # Once we have enough players, instantiate the game!
-            print("[+] Starting Game!\n")
+            print("[+] Starting Game!")
             w4o = WaitingForOpponent(False)
             for client in clients:
-                print("Sending...\n")
                 self._server.send(client, dict(w4o))
 
-            clients = []
-            num_clients = 0
 
-    def launch_thread(self):
-        pass
+            game = CheckerBoardServer(board_size, time_limit, clients)
+            game_thread = Thread(target=game.play)
+            game_thread.start()
+            self._games.append(game)
+            self._game_threads.append(game_thread)
 
     def shutdown(self):
         self.close_socket()
         self._spinner.stop()
 
+        for game in self.games:
+            game.terminate_game()
+
+        for game_thread in self._game_threads:
+            game_thread.join(self._timeout)
+
 
 def signal_handler(signal, frame):
-    print("\n[-] Ctrl+C!  Shutting down...\n")
-    cs.shutdown()
+    print("[-] Ctrl+C!  Shutting down...")
+    gs.shutdown()
     sys.exit(0)
 
 
@@ -152,18 +168,18 @@ def main():
     :param: void
     :return: void
     """
-    global cs
+    global gs
 
     # Register the crl+c signal handler
     signal.signal(signal.SIGINT, signal_handler)
 
-    # Instantiate the checkers server
-    cs = CheckersServer(2004, 0.1, 10)
+    # Instantiate the game server
+    gs = GameServer(2004, 0.1, 10, 2)
     try:
-        cs.open_socket()
-        cs.run()
+        gs.open_socket()
+        gs.run()
     finally:
-        cs.shutdown()
+        gs.shutdown()
 
 
 if __name__ == '__main__':

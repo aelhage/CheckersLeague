@@ -17,6 +17,8 @@ from enum import Enum
 class MESSAGE_IDS(Enum):
     CONNECTION_REQUEST = 1
     WAITING_FOR_OPPONENT = 2
+    GAME_RULES = 3
+
 
     ERROR_MESSAGE = -99
 
@@ -121,3 +123,59 @@ class WaitingForOpponent:
         else:
             yield 'flag', self.flag
 
+
+class GameRules:
+    """
+        tmp
+        MANDATORY FIELDS:
+
+    """
+    def __init__(self, player_color=None, num_players=None, time_limit=None, board_size=None):
+        self.id = MESSAGE_IDS['GAME_RULES'].value
+        self.player_color = player_color
+        self.num_players = num_players
+        self.time_limit = time_limit
+        self.board_size = board_size
+
+    def from_dict(self, dictionary):
+        for key in dictionary:
+            setattr(self, key, dictionary[key])
+
+    def __iter__(self):
+        yield 'id', self.id
+
+        if self.player_color is None:
+            raise Exception('player_color Field is Required!')
+        else:
+            yield 'player_color', self.player_color
+
+        if self.num_players is None:
+            raise Exception('num_players Field is Required!')
+        else:
+            yield 'num_players', self.num_players
+
+        if self.move_time_limit is None:
+            raise Exception('move_time_limit Field is Required!')
+        else:
+            yield 'move_time_limit', self.move_time_limit
+
+        if self.board_size is None:
+            raise Exception('board_size Field is Required!')
+        else:
+            yield 'board_size', self.board_size
+
+class YourTurn:
+    """
+        tmp
+        MANDATORY FIELDS:
+
+    """
+    def __init__(self):
+        self.id = MESSAGE_IDS['YOUR_TURN'].value
+
+    def from_dict(self, dictionary):
+        for key in dictionary:
+            setattr(self, key, dictionary[key])
+
+    def __iter__(self):
+        yield 'id', self.id
