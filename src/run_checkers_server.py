@@ -1,5 +1,5 @@
 """
-server_play.py
+run_checkers_server.py
     - Main callable method for executing a server-run simulation with a PyGame GUI.
 
 Anthony Trezza
@@ -13,7 +13,6 @@ CHANGE LOG:
 import socket
 import sys
 import signal
-import copy
 from utils import Spinner
 from utils.jsonsocket import Server
 from msgs.messages import *
@@ -29,6 +28,7 @@ class GameServer:
 
         """
         # Input check
+        # TODO
 
         # Initialize the input parameters
         self._tcp_port = tcp_port
@@ -54,7 +54,7 @@ class GameServer:
         # Keep accepting connections
         # Initialize a list of clients
         clients = []
-        client_info = []
+        client_names = []
         num_clients = 0
 
         # Launch the spinner in another thread.... Just for coolness.
@@ -81,16 +81,17 @@ class GameServer:
                     name = conReq.name
 
                     # Ensure the ID is correct
-                    if id != MESSAGE_ID["CONNECTION_REQUEST"].value:
-                        print("[.] Wrong Message Received.  Expected ID: " + str(MESSAGE_ID["CONNECTION_REQUEST"].value)
+                    if id != MESSAGE_IDS["CONNECTION_REQUEST"].value:
+                        print("[.] Wrong Message Received.  Expected ID: " + str(MESSAGE_IDS["CONNECTION_REQUEST"].value)
                               + ", RECEIVED ID: " + str(id))
-                        raise Exception("Invalid Message")
+                        raise ValueError("Invalid Message")
 
                     # If the message doesn't have the name field populated from the message dictionary, this is invalid
                     if not name:
-                        raise Exception("Invalid Message")
+                        print("[.] name field in the Connection Request Message is required.")
+                        raise ValueError("Invalid Message")
 
-                except Exception:
+                except ValueError:
                     # If any errors where thrown during when trying to read the message, return an error and close the
                     # client connection
                     print("[-] Invalid Message Received from IP Address " + str(client_addr[0]) +
@@ -100,14 +101,13 @@ class GameServer:
                     client.close()
                     continue
 
-                print(type(client))
                 # The message was received successfully!  Print the name
                 print("[+] New Client " + name + " at IP Address " + str(client_addr[0]) +
                       ", Port " + str(client_addr[1]))
-                print("[.] Num Clients: " + str(num_clients))
 
                 # Add the new client to the current clients list
                 clients.append(client)
+                client_names.append(name)
                 num_clients += 1
                 if num_clients < self._num_players:
                     print("[.] Waiting for Opponent... ")
