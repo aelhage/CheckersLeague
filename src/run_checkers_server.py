@@ -13,6 +13,7 @@ CHANGE LOG:
 import socket
 import sys
 import signal
+from threading import Thread
 from utils import Spinner
 from utils.jsonsocket import Server
 from msgs.messages import *
@@ -37,6 +38,7 @@ class GameServer:
         self._num_players = num_players
 
         # Create a list of our threads
+        self._games = []
         self._game_threads = []
         self._server = object
         self._spinner = object
@@ -47,6 +49,7 @@ class GameServer:
         self._server = Server(socket.gethostname(), self._tcp_port, self._timeout)
 
     def close_socket(self):
+        print("[-] Closing Server Socket...")
         self._server.close()
 
     def run(self):
@@ -82,18 +85,21 @@ class GameServer:
 
                     # Ensure the ID is correct
                     if id != MESSAGE_IDS["CONNECTION_REQUEST"].value:
+                        # TODO: Reply with an error message.
                         print("[.] Wrong Message Received.  Expected ID: " + str(MESSAGE_IDS["CONNECTION_REQUEST"].value)
                               + ", RECEIVED ID: " + str(id))
                         raise ValueError("Invalid Message")
 
                     # If the message doesn't have the name field populated from the message dictionary, this is invalid
                     if not name:
+                        # TODO: Reply with an error message.
                         print("[.] name field in the Connection Request Message is required.")
                         raise ValueError("Invalid Message")
 
                 except ValueError:
                     # If any errors where thrown during when trying to read the message, return an error and close the
                     # client connection
+                    # TODO: Reply with an error message.
                     print("[-] Invalid Message Received from IP Address " + str(client_addr[0]) +
                           ", Port " + str(client_addr[1]))
 
@@ -109,6 +115,9 @@ class GameServer:
                 clients.append(client)
                 client_names.append(name)
                 num_clients += 1
+
+                # If there is an insufficient number of players to make a game, send the waiting for opponents messages
+                # to reassure the player that they've been heard and will be sent a game as soon as an opponent is found
                 if num_clients < self._num_players:
                     print("[.] Waiting for Opponent... ")
                     w4o = WaitingForOpponent(True)
@@ -129,6 +138,7 @@ class GameServer:
                     del clients[idx]
 
             if len(clients) < self._num_players:
+                # Todo: Send a Waiting for opponents message to the remaining player
                 print("[.] Not Enough Players... Still Searching...")
                 continue
 
@@ -138,18 +148,22 @@ class GameServer:
             for client in clients:
                 self._server.send(client, dict(w4o))
 
-
-            game = CheckerBoardServer(board_size, time_limit, clients)
+            game = CheckerBoardServer(clients)
             game_thread = Thread(target=game.play)
             game_thread.start()
             self._games.append(game)
             self._game_threads.append(game_thread)
 
+            clients = []
+            client_names = []
+            num_clients = 0
+
     def shutdown(self):
+        print("[-] Shutting Down...")
         self.close_socket()
         self._spinner.stop()
 
-        for game in self.games:
+        for game in self._games:
             game.terminate_game()
 
         for game_thread in self._game_threads:

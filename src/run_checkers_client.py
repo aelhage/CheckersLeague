@@ -27,11 +27,6 @@ while True:
 
         print(w4o.flag)
 
-        if w4o.flag:
-            continue
-        else:
-            break
-
     except Exception:
         print("Invalid Message.")
         continue

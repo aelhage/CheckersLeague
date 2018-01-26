@@ -18,6 +18,10 @@ class MESSAGE_IDS(Enum):
     CONNECTION_REQUEST = 1
     WAITING_FOR_OPPONENT = 2
     GAME_RULES = 3
+    BEGIN_GAME = 4
+    YOUR_TURN = 5
+    MOVE = 6
+
 
 
     ERROR_MESSAGE = -99
@@ -26,6 +30,7 @@ class MESSAGE_IDS(Enum):
 class ERRORS(Enum):
     # COMMON ERRORS #
     INVALID_MSG = 1
+    INVALID_MOVE = 2
 
     # SERVER -> CLIENT #
     OPPONENT_DISCONNECTED = 100
@@ -49,6 +54,31 @@ class ErrorMessage:
             raise Exception('error_name Field is Required!')
         else:
             yield 'error_name', self.error_name
+
+
+# ---------------------------------------------------------------------------- #
+# CLIENT <-> SERVER
+# ---------------------------------------------------------------------------- #
+class Move:
+    """
+        The Move message defines the fields for the client's move.
+    """
+
+    def __init__(self, move_list=[]):
+        self.id = MESSAGE_IDS['MOVE'].value
+        self.move_list = move_list
+
+    def from_dict(self, dictionary):
+        for key in dictionary:
+            setattr(self, key, dictionary[key])
+
+    def __iter__(self):
+        yield 'id', self.id
+
+        if self.move_list is None or len(self.move_list) == 0:
+            raise Exception('move_list Field is Required!')
+        else:
+            yield 'move_list', self.move_list
 
 
 # ---------------------------------------------------------------------------- #
@@ -82,14 +112,6 @@ class ConnectionRequest:
             raise Exception('name Field is Required!')
         else:
             yield 'name', self.name
-
-
-class Move:
-    """
-        The Move message defines the fields for the client's move.
-    """
-    def __init__(self):
-        pass
 
 
 # ---------------------------------------------------------------------------- #
@@ -154,15 +176,33 @@ class GameRules:
         else:
             yield 'num_players', self.num_players
 
-        if self.move_time_limit is None:
-            raise Exception('move_time_limit Field is Required!')
+        if self.time_limit is None:
+            raise Exception('time_limit Field is Required!')
         else:
-            yield 'move_time_limit', self.move_time_limit
+            yield 'time_limit', self.time_limit
 
         if self.board_size is None:
             raise Exception('board_size Field is Required!')
         else:
             yield 'board_size', self.board_size
+
+
+class BeginGame:
+    """
+        tmp
+        MANDATORY FIELDS:
+
+    """
+    def __init__(self):
+        self.id = MESSAGE_IDS['BEGIN_GAME'].value
+
+    def from_dict(self, dictionary):
+        for key in dictionary:
+            setattr(self, key, dictionary[key])
+
+    def __iter__(self):
+        yield 'id', self.id
+
 
 class YourTurn:
     """
