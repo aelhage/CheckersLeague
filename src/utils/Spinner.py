@@ -2,6 +2,7 @@ import sys
 import time
 import threading
 
+
 class Spinner:
     busy = False
     delay = 0.1
@@ -16,12 +17,16 @@ class Spinner:
         if delay and float(delay): self.delay = delay
 
     def spinner_task(self):
-        while self.busy:
-            sys.stdout.write(next(self.spinner_generator))
-            sys.stdout.flush()
-            time.sleep(self.delay)
-            sys.stdout.write('\b')
-            sys.stdout.flush()
+        try:
+            while self.busy:
+                sys.stdout.write(next(self.spinner_generator))
+                sys.stdout.flush()
+                time.sleep(self.delay)
+                sys.stdout.write('\b')
+                sys.stdout.flush()
+
+        except KeyboardInterrupt:
+            self.stop()
 
     def start(self):
         self.busy = True

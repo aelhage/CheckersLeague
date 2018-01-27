@@ -61,7 +61,7 @@ class GameServer:
         num_clients = 0
 
         # Launch the spinner in another thread.... Just for coolness.
-        self._spinner = Spinner.Spinner(self._timeout)
+        self._spinner = Spinner.Spinner(10*self._timeout)
         self._spinner.start()
         while True:
             # Keep accepting clients until the number of players is met

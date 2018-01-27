@@ -91,19 +91,19 @@ class CheckerBoardServer(CheckerBoardGUI):
 
         move_ind = 0
         # Loop until end game conditions met
-        while not self.game_over or not self._cb.get_winner():
-            self._update()
-
-            player_info, player = self._players[move_ind % 2]
-
-            # Send the 'your turn' message
-            json_send(player, dict(YourTurn()))
-
-            time.sleep(self._time_limit)
-            move = Move()
-
-            # Read the move
+        while not self.game_over:
             try:
+                self._update()
+
+                player_info, player = self._players[move_ind % 2]
+
+                # Send the 'your turn' message
+                json_send(player, dict(YourTurn()))
+
+                # time.sleep(self._time_limit)
+                move = Move()
+
+                # Read the move
                 data = json_recv(player)
                 move = move.from_dict(data)
 
@@ -121,7 +121,13 @@ class CheckerBoardServer(CheckerBoardGUI):
 
                     self._cb.execute_move(move.move_list)
                     move_ind += 1
-                    continue
+
+                    winner = self._cb.get_winner()
+                    if winner:
+                        self.game_over = True
+                        break
+                    else:
+                        continue
 
                 # Make the move (unless it is invalid)
                 if not self._cb.execute_move(move.move_list):
@@ -133,7 +139,13 @@ class CheckerBoardServer(CheckerBoardGUI):
 
                     self._cb.execute_move(move.move_list)
                     move_ind += 1
-                    continue
+
+                    winner = self._cb.get_winner()
+                    if winner:
+                        self.game_over = True
+                        break
+                    else:
+                        continue
 
                 # If it made it this far, then the move succeeded!
                 # Send the official move to the players and continue!
@@ -141,7 +153,16 @@ class CheckerBoardServer(CheckerBoardGUI):
                     json_send(tmp_player, dict(move))
 
                 move_ind += 1
-                continue
+
+                winner = self._cb.get_winner()
+                if winner:
+                    self.game_over = True
+                    break
+                else:
+                    continue
+
+            except KeyboardInterrupt:
+                self.game_over = True
 
             except socket.timeout:
                 # TODO: Reply with timeout message and send the random move to all players
@@ -153,5 +174,12 @@ class CheckerBoardServer(CheckerBoardGUI):
 
                 self._cb.execute_move(move.move_list)
                 move_ind += 1
-                #time.sleep(10)
-                continue
+
+                winner = self._cb.get_winner()
+                if winner:
+                    self.game_over = True
+                    break
+                else:
+                    continue
+
+        print("[.] Congratulations {} You are the Winner!".format(winner))
