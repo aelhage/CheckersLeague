@@ -15,12 +15,9 @@ from players.simple_ai import SimpleAI
 from board import CheckerBoard
 import socket
 import copy
-import sys
-import signal
 
 cc = object
 
-# TODO: Don't crash if server isn't on...
 
 class CheckersClient:
     def __init__(self, name, host, port, player):
@@ -32,6 +29,7 @@ class CheckersClient:
         self.player = player
 
         self.state = "NOT_CONNECTED"
+        self.previous_state = self.state
 
         # Game Rules
         self._timeout = 1
@@ -57,7 +55,7 @@ class CheckersClient:
 
         try:
             self._client.send(data)
-        except ...:
+        except:
             raise Exception("Could not send the connection request message to the server...")
 
         print("[+] ConnectionRequest message sent and received!")
@@ -91,14 +89,13 @@ class CheckersClient:
                     continue
                 else:
                     print("[+] Opponent found!")
+                    self.previous_state = self.state
                     self.state = "FOUND_GAME"
 
             elif message['id'] == MESSAGE_IDS['GAME_RULES'].value and self.state == "FOUND_GAME":
                 # Wait for the rules...
                 gr = GameRules()
                 gr.from_dict(message)
-
-                # Todo: error checking...
 
                 self._color = gr.player_color
                 self._timeout = gr.time_limit
@@ -119,17 +116,18 @@ class CheckersClient:
                     raise Exception("Could not launch AI Program")
 
                 print("[+] Launched the AI!")
+                self.previous_state = self.state
                 self.state = "GAME_LAUNCHED"
 
             elif message['id'] == MESSAGE_IDS['BEGIN_GAME'].value and self.state == "GAME_LAUNCHED":
                 bg = BeginGame()
                 bg.from_dict(message)
 
-                # TODO: More error checking...
                 if bg.id != MESSAGE_IDS["BEGIN_GAME"].value:
                     raise Exception("INVALID MESSAGE")
 
                 print("[+] Time to play!")
+                self.previous_state = self.state
                 self.state = "PLAYING"
 
             elif message['id'] == MESSAGE_IDS['YOUR_TURN'].value and self.state == "PLAYING":
@@ -150,6 +148,7 @@ class CheckersClient:
                 print("[.] Received Move {}".format(move.move_list))
 
                 self.board.execute_move(move.move_list)
+                self.previous_state = self.state
 
             elif message['id'] == MESSAGE_IDS['GAME_OVER'].value and self.state == "PLAYING":
                 go = GameOver()
@@ -160,36 +159,33 @@ class CheckersClient:
                 else:
                     print("[+] Defeat!")
 
+                self.previous_state = self.state
                 self.state = "GAME_OVER"
+
+            elif message['id'] == MESSAGE_IDS['ERROR_MESSAGE'].value:
+                print("[!] Error Message Received! {}".format(message['error_name']))
+
+                if message['name'] == ERRORS['OPPONENT_DISCONNECTED'].name:
+                    self.state = "GAME_OVER"
+                    print("[+] Opponent Disconnected.")
+                    print("[+] Victory!")
 
     def shutdown(self):
         print("[-] Shutting Down...")
         self._client.close()
 
 
-def signal_handler(signal, frame):
-    print("[-] Ctrl+C!  Shutting down...")
-    cc.shutdown()
-    sys.exit(0)
-
-
 def main():
-    """ main()
-        -  Just launches the server
-    :param: void
-    :return: void
-    """
-
-    # Register the crl+c signal handler
-    signal.signal(signal.SIGINT, signal_handler)
-
     # Instantiate the game server
     cc = CheckersClient("SimpleAI", socket.gethostname(), 2004, SimpleAI)
     try:
         cc.play()
-    finally:
+    except KeyboardInterrupt:
+        print("[-] Ctrl+C!  Shutting down...")
         cc.shutdown()
 
+    finally:
+        cc.shutdown()
 
 if __name__ == '__main__':
     main()

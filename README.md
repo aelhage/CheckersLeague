@@ -20,9 +20,9 @@ If a capturing move is available, the player must make a capturing move. If mult
 A player will win the game if it is the opposing players turn to move, and they have no valid moves available. The game will also end if there has not been a piece captured or promoted to king within the last 40 moves. In this case, the winner will be the player with the most pieces on the board. If both players have the same number of pieces, the game will end in a draw. 
 
 ### Software Requirements
-Python 3.6.x - https://www.python.org/downloads/
-pygame (optional) - https://www.pygame.org/wiki/GettingStarted
-NOTE: Alternatively, if you do not wish to install the `pygame` package, you can also use a console based version defined in the `board` module. In the `main` method, edit the definition of the `players` array to include an instance of your class and the class you would like to compete against. 
+* Python 3.6.x - https://www.python.org/downloads/
+* pygame (optional) - https://www.pygame.org/wiki/GettingStarted
+* NOTE: Alternatively, if you do not wish to install the `pygame` package, you can also use a console based version defined in the `board` module. In the `main` method, edit the definition of the `players` array to include an instance of your class and the class you would like to compete against. 
 
 ### Software Overview
 ## Creating a Bot

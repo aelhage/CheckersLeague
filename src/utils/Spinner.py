@@ -21,7 +21,8 @@ class Spinner:
             while self.busy:
                 sys.stdout.write(next(self.spinner_generator))
                 sys.stdout.flush()
-                time.sleep(self.delay)
+                for i in range(int(self.delay)):
+                    time.sleep(1)
                 sys.stdout.write('\b')
                 sys.stdout.flush()
 

@@ -77,6 +77,9 @@ class Client(object):
         self.socket.settimeout(timeout)
         return self
 
+    def setblocking(self, flag):
+        self.socket.setblocking(flag)
+
     def settimeout(self, timeout):
         self.socket.settimeout(timeout)
 

@@ -12,7 +12,6 @@ CHANGE LOG:
 
 import socket
 import sys
-import signal
 from threading import Thread
 from utils import Spinner
 from utils.jsonsocket import Server
@@ -25,19 +24,27 @@ gs = object
 
 class GameServer:
     def __init__(self, tcp_port, timeout, max_games, num_players):
-        """ Initializes a Game Server
+        # Check the port number to ensure it is an integer
+        if not isinstance(tcp_port, int):
+            raise ValueError("tcp_port must be an integer port")
 
-        """
-        # Input check
-        # TODO
+        # Check the timeout
+        if not (isinstance(timeout, int) or isinstance(timeout, float)) or timeout <= 0 or timeout >= 60:
+            raise ValueError("timeout is invalid.  Ensure that it is an integer in the range from (0, 60) exclusively.")
 
-        # Initialize the input parameters
+        # Check the max_games
+        if not isinstance(max_games, int) or max_games <= 0 or max_games >= 10:
+            raise ValueError("max_games is invalid.  Ensure that it is an integer in the range from (0, 10) exclusively.")
+
+        # Check the number of players
+        if not isinstance(num_players, int) or num_players <= 0 or num_players >= 10:
+            raise ValueError("num_players is invalid.  Ensure that it is an integer in the range from (0, 10) exclusively.")
+
+        # Initialize the class properties
         self._tcp_port = tcp_port
         self._max_games = max_games
         self._timeout = timeout
         self._num_players = num_players
-
-        # Create a list of our threads
         self._games = []
         self._game_threads = []
         self._server = object
@@ -45,7 +52,6 @@ class GameServer:
 
     def open_socket(self):
         print("[+] Opening Server Socket ...")
-        # Open the socket - TCP Socket Stream
         self._server = Server(socket.gethostname(), self._tcp_port, self._timeout)
 
     def close_socket(self):
@@ -54,8 +60,6 @@ class GameServer:
 
     def run(self):
         print("[+] Running Server ...")
-        # Keep accepting connections
-        # Initialize a list of clients
         clients = []
         client_names = []
         num_clients = 0
@@ -75,7 +79,7 @@ class GameServer:
                 client.settimeout(self._timeout)
 
                 try:
-                    # Read the message
+                    # Read the incoming message
                     msg = self._server.recv(client)
 
                     # Try casting that message to a connection request
@@ -86,31 +90,29 @@ class GameServer:
 
                     # Ensure the ID is correct
                     if id != MESSAGE_IDS["CONNECTION_REQUEST"].value:
-                        # TODO: Reply with an error message.
                         print("[.] Wrong Message Received.  Expected ID: " + str(MESSAGE_IDS["CONNECTION_REQUEST"].value)
                               + ", RECEIVED ID: " + str(id))
-                        raise ValueError("Invalid Message")
+                        self._server.send(client, dict(ErrorMessage(ERRORS.INVALID_MSG)))
+                        continue
 
                     # If the message doesn't have the name field populated from the message dictionary, this is invalid
                     if not name:
-                        # TODO: Reply with an error message.
                         print("[.] name field in the Connection Request Message is required.")
-                        raise ValueError("Invalid Message")
+                        self._server.send(client, dict(ErrorMessage(ERRORS.INVALID_MSG)))
+                        continue
 
                 except ValueError:
-                    # If any errors where thrown during when trying to read the message, return an error and close the
-                    # client connection
-                    # TODO: Reply with an error message.
                     print("[-] Invalid Message Received from IP Address " + str(client_addr[0]) +
                           ", Port " + str(client_addr[1]))
-
                     self._server.send(client, dict(ErrorMessage(ERRORS.INVALID_MSG)))
-                    client.close()
+                    continue
+
+                except ConnectionResetError:
+                    print("[-] Client {} Died.".format(str(client_addr[0])))
                     continue
 
                 # The message was received successfully!  Print the name
-                print("[+] New Client " + name + " at IP Address " + str(client_addr[0]) +
-                      ", Port " + str(client_addr[1]))
+                print("[+] New Client " + name + " at IP Address " + str(client_addr[0]) + ", Port " + str(client_addr[1]))
 
                 # Add the new client to the current clients list
                 clients.append(client)
@@ -130,6 +132,9 @@ class GameServer:
                     data = self._server.recv(client)
                 except socket.timeout:
                     continue
+                except ConnectionResetError:
+                    print("[-] Client {} Died.".format(str(client[1][0])))
+                    data = None
 
                 if not data:
                     print("[-] Dead client idx " + str(idx) + " at IP address " + str(client[1][0]) + " and port " +
@@ -139,14 +144,22 @@ class GameServer:
                     del clients[idx]
 
             if len(clients) < self._num_players:
-                # Todo: Send a Waiting for opponents message to the remaining player
                 print("[.] Not Enough Players... Still Searching...")
+                w4o = WaitingForOpponent(True)
+                for idx, client in enumerate(clients):
+                    try:
+                        self._server.send(client, dict(w4o))
+                    except ConnectionResetError:
+                        print("[-] Client {} Died.".format(str(client[1][0])))
+                        num_clients -= 1
+                        conn.close_client()
+                        del clients[idx]
                 continue
 
             # Once we have enough players, instantiate the game!
             print("[+] Starting Game!")
             w4o = WaitingForOpponent(False)
-            for client in clients:
+            for idx, client in enumerate(clients):
                 self._server.send(client, dict(w4o))
 
             game = CheckerBoardServer(clients,  client_names, self._timeout)
@@ -171,12 +184,6 @@ class GameServer:
             game_thread.join(self._timeout)
 
 
-def signal_handler(signal, frame):
-    print("[-] Ctrl+C!  Shutting down...")
-    gs.shutdown()
-    sys.exit(0)
-
-
 def main():
     """ main()
         -  Just launches the server
@@ -185,14 +192,15 @@ def main():
     """
     global gs
 
-    # Register the crl+c signal handler
-    signal.signal(signal.SIGINT, signal_handler)
-
     # Instantiate the game server
     gs = GameServer(2004, 1.5, 2, 2)
     try:
         gs.open_socket()
         gs.run()
+
+    except KeyboardInterrupt:
+        print("[-] Ctrl+C!  Shutting down...")
+        pass
     finally:
         gs.shutdown()
 

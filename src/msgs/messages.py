@@ -22,9 +22,6 @@ class MESSAGE_IDS(Enum):
     YOUR_TURN = 5
     MOVE = 6
     GAME_OVER = 7
-
-
-
     ERROR_MESSAGE = -99
 
 

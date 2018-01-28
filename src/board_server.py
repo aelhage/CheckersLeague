@@ -28,18 +28,9 @@ WHITE = (255, 255, 255)
 GREEN = (0, 128, 0)
 CREAM = (255, 245, 180)
 
-# TODO: Kill Pygame after game completion, don't crash if someone exits (or crashes)!
-
 
 class CheckerBoardServer(CheckerBoardGUI):
     def __init__(self, player_sockets, player_names, time_limit):
-        """ Inits a CheckerBoardGUI with the specified parameters.
-
-        :param player_socket: List of two client socket handles.
-        :raises TypeError: if player1 or player2 not an instance of socket.socket
-        :raises ValueError: if board_size is not an even number or less than 4
-        """
-
         # 0. Input Checking
         if len(player_sockets) != 2:
             raise ValueError('Invalid number of players!')
@@ -57,6 +48,8 @@ class CheckerBoardServer(CheckerBoardGUI):
         self.player_names = player_names
         player_info = ['w', 'b']
         for idx, player in enumerate(player_sockets):
+            player.setblocking(0)
+            player.settimeout(self._time_limit)
             self._players.append((player_info[idx], player))
 
         # 3. Setup the Checker Board
@@ -89,12 +82,28 @@ class CheckerBoardServer(CheckerBoardGUI):
         # Send the rules and the begin game messages!
         gr = GameRules(player_color=None, num_players=self._num_players, time_limit=self._time_limit, board_size=self._board_size)
         bg = BeginGame()
+        success = False
+        i = 0
         for player_info, player in self._players:
             gr.player_color = player_info[0]
-            json_send(player, dict(gr))
-            json_send(player, dict(bg))
+            try:
+                json_send(player, dict(gr))
+                json_send(player, dict(bg))
+                success = True
+                i += 1
+            except ConnectionResetError:
+                print("[-] Player: {} Disconnected.".format(player_info))
+                del self._players[i]
+                success = False
+                break
+
+        if not success:
+            for player_info, player in self_players:
+                json_send(player, dict(ErrorMessage(ERRORS.OPPONENT_DISCONNECTED)))
+                self.game_over = True
 
         move_ind = 0
+        winner = None
         # Loop until end game conditions met
         while not self.game_over:
             try:
@@ -105,11 +114,11 @@ class CheckerBoardServer(CheckerBoardGUI):
                 # Send the 'your turn' message
                 json_send(player, dict(YourTurn()))
 
-                move = Move()
-
                 # Read the move
+                move = Move()
                 data = json_recv(player)
                 move.from_dict(data)
+
                 for i in range(len(move.move_list)):
                     move.move_list[i] = tuple(move.move_list[i])
 
@@ -166,8 +175,16 @@ class CheckerBoardServer(CheckerBoardGUI):
             except KeyboardInterrupt:
                 self.game_over = True
 
+            except ConnectionResetError:
+                print("[!] Player: {} Disconnected.".format(player_info))
+                del self._players[(move_ind + 1 )% 2]
+                for player_info, player in self._players:
+                    json_send(player, dict(ErrorMessage(ERRORS.OPPONENT_DISCONNECTED)))
+                    self.game_over = True
+                    winner = self._colors[move_ind + 1 % 2]
+                break
+
             except socket.timeout:
-                # TODO: Reply with timeout message and send the random move to all players
                 print('[!] Socket Timed Out - Random Move made for ' + player_info[0])
                 move.move_list = self.random_move(player_info)
 
@@ -183,6 +200,11 @@ class CheckerBoardServer(CheckerBoardGUI):
                     break
                 else:
                     continue
+
+            except e:
+                print("[!] Unexpected Error!" + e)
+                print("[.] Terminating...")
+                break
 
         print("[.] Congratulations {} You are the Winner!".format(winner))
         go = GameOver(winner)
