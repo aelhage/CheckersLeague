@@ -6,7 +6,12 @@ import copy
 
 class SimpleAI(AbstractPlayer):
     def __init__(self, board_size, player_num):
-        self._player = 'w' if player_num == 1 else 'b'
+        if isinstance(player_num, int):
+            self._player = 'w' if player_num == 1 else 'b'
+        elif isinstance(player_num, str):
+            self._player = player_num
+        else:
+            raise ValueError("player_num must be either an int or a string.")
 
     def move(self, board, time_limit, ret_val):
         start_time = time.monotonic()
@@ -20,6 +25,7 @@ class SimpleAI(AbstractPlayer):
             nodes.extend(node.generate_child_nodes())
         # Best move needs to be added to ret_val to return to caller since this will be running on a separate thread
         ret_val.extend(root_node.get_best_move())
+        return ret_val
 
     def get_name(self):
         return "SimpleAI"
@@ -80,3 +86,4 @@ class ProcessingNode:
     def get_best_move(self):
         """Returns the move corresponding to the child node with the highest utility."""
         return max(self._children, key=lambda c: c.calculate_utility()).move
+

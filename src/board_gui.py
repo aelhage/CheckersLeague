@@ -1,6 +1,17 @@
+"""
+board_gui.py
+    - Main callable method for executing a local simulation with a PyGame GUI.
+
+Alex Elhage
+11 Nov 2017
+
+CHANGE LOG:
+    - 16 Dec 2017 trezza - Updated
+
+"""
+
 from board import CheckerBoard
 from players.interface import AbstractPlayer
-from players.console import ConsolePlayer
 from players.simple_ai import SimpleAI
 from threading import Thread
 import copy
@@ -8,6 +19,7 @@ from random import choice
 import pygame
 
 
+# Predefined Color Templates for the GUI
 BLACK = (0, 0, 0)
 WHITE = (255, 255, 255)
 GREEN = (0, 128, 0)
@@ -25,6 +37,8 @@ class CheckerBoardGUI:
         :raises TypeError: if player1 or player2 not subclass of AbstractPlayer
         :raises ValueError: if board_size is not an even number or less than 4
         """
+
+        # 0. Input Checking
         if not issubclass(player1, AbstractPlayer):
             raise TypeError('Player 1 did not implement AbstractPlayer')
         elif not issubclass(player2, AbstractPlayer):
@@ -34,12 +48,15 @@ class CheckerBoardGUI:
         if board_size < 4:
             raise ValueError("Board size must be at least 4")
 
+        # 1. Initialize the input class parameters
         self._board_size = board_size
         self._time_limit = time_limit
-        self._cb = CheckerBoard(self._board_size)
-
         self._players = [('w', player1(self._board_size, 1)), ('b', player2(self._board_size, 2))]
 
+        # 3. Setup the Checker Board
+        self._cb = CheckerBoard(self._board_size)
+
+        # 2. Setup the gui
         self._setup_window()
 
     def play(self):
@@ -105,8 +122,15 @@ class CheckerBoardGUI:
 
 
 def main():
+    """ main()
+        - Simply instantiates the CheckerBoardGUI and runs it
+    :param: void
+    :return: void
+    """
     cb_gui = CheckerBoardGUI(10, 1, SimpleAI, SimpleAI)
     cb_gui.play()
+    pygame.display.quit()
+    pygame.quit()
 
 
 if __name__ == '__main__':
