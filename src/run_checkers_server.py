@@ -188,7 +188,7 @@ def main():
     signal.signal(signal.SIGINT, signal_handler)
 
     # Instantiate the game server
-    gs = GameServer(2004, 0.1, 10, 2)
+    gs = GameServer(2004, 5, 2, 2)
     try:
         gs.open_socket()
         gs.run()

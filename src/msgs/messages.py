@@ -21,6 +21,7 @@ class MESSAGE_IDS(Enum):
     BEGIN_GAME = 4
     YOUR_TURN = 5
     MOVE = 6
+    GAME_OVER = 7
 
 
 
@@ -74,11 +75,7 @@ class Move:
 
     def __iter__(self):
         yield 'id', self.id
-
-        if self.move_list is None or len(self.move_list) == 0:
-            raise Exception('move_list Field is Required!')
-        else:
-            yield 'move_list', self.move_list
+        yield 'move_list', self.move_list
 
 
 # ---------------------------------------------------------------------------- #
@@ -219,3 +216,22 @@ class YourTurn:
 
     def __iter__(self):
         yield 'id', self.id
+
+
+class GameOver:
+    """
+        tmp
+        MANDATORY FIELDS:
+
+    """
+    def __init__(self, winner=None):
+        self.id = MESSAGE_IDS['GAME_OVER'].value
+        self.winner = winner
+
+    def from_dict(self, dictionary):
+        for key in dictionary:
+            setattr(self, key, dictionary[key])
+
+    def __iter__(self):
+        yield 'id', self.id
+        yield 'winner', self.winner

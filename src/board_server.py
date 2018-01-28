@@ -102,19 +102,14 @@ class CheckerBoardServer(CheckerBoardGUI):
                 # Send the 'your turn' message
                 json_send(player, dict(YourTurn()))
 
-                # time.sleep(self._time_limit)
                 move = Move()
 
                 # Read the move
                 data = json_recv(player)
-                move = move.from_dict(data)
+                move.from_dict(data)
 
-                if move.id != MESSAGE_IDS["MOVE"].value or move.move_list.size() == 0:
+                if move is None or move.id != MESSAGE_IDS["MOVE"].value or len(move.move_list) == 0:
                     print("[!] Invalid Message Received from {}".format(player_info))
-                    print("[.] Expected {}, Received {}".format("MOVE", MESSAGE_IDS[move.id]))
-
-                    json_send(player, dict(ErrorMessage(ERRORS.INVALID_MSG)))
-
                     print("[.] Generating random move...")
                     move.move_list = self.random_move(player_info)
 
@@ -185,3 +180,6 @@ class CheckerBoardServer(CheckerBoardGUI):
                     continue
 
         print("[.] Congratulations {} You are the Winner!".format(winner))
+        go = GameOver(winner)
+        for tmp_player_info, tmp_player in self._players:
+            json_send(tmp_player, dict(go))
