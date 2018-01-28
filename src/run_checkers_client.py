@@ -110,7 +110,7 @@ class CheckersClient:
                     raise Exception("Could not launch the checker board")
 
                 try:
-                    self.player(self._board_size, self._timeout)
+                    self.player = self.player(self._board_size, self._color)
                 except ...:
                     raise Exception("Could not launch AI Program")
 
@@ -130,18 +130,19 @@ class CheckersClient:
 
             elif message['id'] == MESSAGE_IDS['YOUR_TURN'].value and self.state == "PLAYING":
                 print("[+] My Turn!")
-                move_list = []
-                t = Thread(target=self.player.move, args=(copy.deepcopy(self.board), self._timeout, move_list))
-                t.start()
-                t.join(self._timeout)
+                ret_val = []
+                self.player.move(board=copy.deepcopy(self.board), time_limit=self._timeout, ret_val=ret_val)
 
-                my_move = Move(move_list)
-                print("[.] Playing move {}".format(move_list))
+                my_move = Move(ret_val)
+                print("[.] Playing move {}".format(ret_val))
                 self._client.send(dict(my_move))
 
             elif message['id'] == MESSAGE_IDS['MOVE'].value and self.state == "PLAYING":
                 move = Move()
                 move.from_dict(message)
+                for i in range(len(move.move_list)):
+                    move.move_list[i] = tuple(move.move_list[i])
+
                 print("[.] Received Move {}".format(move.move_list))
 
                 self.board.execute_move(move.move_list)

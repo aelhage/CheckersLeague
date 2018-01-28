@@ -65,7 +65,7 @@ class Move:
         The Move message defines the fields for the client's move.
     """
 
-    def __init__(self, move_list=[]):
+    def __init__(self, move_list=[()]):
         self.id = MESSAGE_IDS['MOVE'].value
         self.move_list = move_list
 
