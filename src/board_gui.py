@@ -129,6 +129,8 @@ def main():
     """
     cb_gui = CheckerBoardGUI(10, 1, SimpleAI, SimpleAI)
     cb_gui.play()
+    pygame.display.quit()
+    pygame.quit()
 
 
 if __name__ == '__main__':

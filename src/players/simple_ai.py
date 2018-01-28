@@ -25,6 +25,7 @@ class SimpleAI(AbstractPlayer):
             nodes.extend(node.generate_child_nodes())
         # Best move needs to be added to ret_val to return to caller since this will be running on a separate thread
         ret_val.extend(root_node.get_best_move())
+        return ret_val
 
     def get_name(self):
         return "SimpleAI"
@@ -84,7 +85,5 @@ class ProcessingNode:
 
     def get_best_move(self):
         """Returns the move corresponding to the child node with the highest utility."""
-        if not len(self._children) != 0:
-            return max(self._children, key=lambda c: c.calculate_utility()).move
-        else:
-            return []
+        return max(self._children, key=lambda c: c.calculate_utility()).move
+

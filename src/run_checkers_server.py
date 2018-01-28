@@ -61,7 +61,7 @@ class GameServer:
         num_clients = 0
 
         # Launch the spinner in another thread.... Just for coolness.
-        self._spinner = Spinner.Spinner(10*self._timeout)
+        self._spinner = Spinner.Spinner(self._timeout)
         self._spinner.start()
         while True:
             # Keep accepting clients until the number of players is met
@@ -73,6 +73,7 @@ class GameServer:
 
                 # Set the client's timeout to the same timeout as our own (to prevent blocking)
                 client.settimeout(self._timeout)
+
                 try:
                     # Read the message
                     msg = self._server.recv(client)
@@ -148,7 +149,7 @@ class GameServer:
             for client in clients:
                 self._server.send(client, dict(w4o))
 
-            game = CheckerBoardServer(clients)
+            game = CheckerBoardServer(clients,  client_names, self._timeout)
             game_thread = Thread(target=game.play)
             game_thread.start()
             self._games.append(game)
@@ -188,7 +189,7 @@ def main():
     signal.signal(signal.SIGINT, signal_handler)
 
     # Instantiate the game server
-    gs = GameServer(2004, 20, 2, 2)
+    gs = GameServer(2004, 1.5, 2, 2)
     try:
         gs.open_socket()
         gs.run()

@@ -32,7 +32,7 @@ CREAM = (255, 245, 180)
 
 
 class CheckerBoardServer(CheckerBoardGUI):
-    def __init__(self, player_sockets):
+    def __init__(self, player_sockets, player_names, time_limit):
         """ Inits a CheckerBoardGUI with the specified parameters.
 
         :param player_socket: List of two client socket handles.
@@ -50,10 +50,11 @@ class CheckerBoardServer(CheckerBoardGUI):
         # 1. Initialize the input class parameters
         self.game_over = False
         self._board_size = 10
-        self._time_limit = 1
+        self._time_limit = time_limit
         self._num_players = 2
 
         self._players = []
+        self.player_names = player_names
         player_info = ['w', 'b']
         for idx, player in enumerate(player_sockets):
             self._players.append((player_info[idx], player))
@@ -66,6 +67,8 @@ class CheckerBoardServer(CheckerBoardGUI):
 
     def terminate_game(self):
         self.game_over = True
+        pygame.display.quit()
+        pygame.quit()
 
     def random_move(self, player_info):
         # Choose random valid move, taking into account forced capture
@@ -107,6 +110,8 @@ class CheckerBoardServer(CheckerBoardGUI):
                 # Read the move
                 data = json_recv(player)
                 move.from_dict(data)
+                for i in range(len(move.move_list)):
+                    move.move_list[i] = tuple(move.move_list[i])
 
                 if move is None or move.id != MESSAGE_IDS["MOVE"].value or len(move.move_list) == 0:
                     print("[!] Invalid Message Received from {}".format(player_info))
@@ -183,3 +188,5 @@ class CheckerBoardServer(CheckerBoardGUI):
         go = GameOver(winner)
         for tmp_player_info, tmp_player in self._players:
             json_send(tmp_player, dict(go))
+
+        self.terminate_game()

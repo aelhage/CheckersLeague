@@ -71,10 +71,14 @@ class Client(object):
     def __del__(self):
         self.close()
 
-    def connect(self, host, port):
+    def connect(self, host, port, timeout):
         self.socket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
         self.socket.connect((host, port))
+        self.socket.settimeout(timeout)
         return self
+
+    def settimeout(self, timeout):
+        self.socket.settimeout(timeout)
 
     def send(self, data):
         if not self.socket:

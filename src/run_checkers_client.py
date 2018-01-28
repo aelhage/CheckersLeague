@@ -13,7 +13,7 @@ from utils.jsonsocket import *
 from msgs.messages import *
 from players.simple_ai import SimpleAI
 from board import CheckerBoard
-from threading import Thread
+import socket
 import copy
 import sys
 import signal
@@ -21,7 +21,6 @@ import signal
 cc = object
 
 # TODO: Don't crash if server isn't on...
-
 
 class CheckersClient:
     def __init__(self, name, host, port, player):
@@ -35,7 +34,7 @@ class CheckersClient:
         self.state = "NOT_CONNECTED"
 
         # Game Rules
-        self._timeout = -1
+        self._timeout = 1
         self._color = 'none'
         self._board_size = -1
 
@@ -44,7 +43,7 @@ class CheckersClient:
     def connect(self):
         # Try to connect to the server
         try:
-            self._client.connect(self._host, self._port)
+            self._client.connect(self._host, self._port,  self._timeout)
         except ...:
             raise Exception("Could not connect to the server...")
 
@@ -72,7 +71,10 @@ class CheckersClient:
         while self.state != "GAME_OVER":
 
             # Grab the message
-            message = self._client.recv()
+            try:
+                message = self._client.recv()
+            except socket.timeout:
+                continue
 
             # Utilize the message ID to iterate through the state machine
             if message['id'] == MESSAGE_IDS['WAITING_FOR_OPPONENT'].value and self.state == "CONNECTED":
@@ -103,6 +105,8 @@ class CheckersClient:
                 self._board_size = gr.board_size
 
                 print("[+] Rules Received!")
+
+                self._client.settimeout(self._timeout)
 
                 try:
                     self.board = CheckerBoard(self._board_size)
