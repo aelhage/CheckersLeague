@@ -28,6 +28,8 @@ WHITE = (255, 255, 255)
 GREEN = (0, 128, 0)
 CREAM = (255, 245, 180)
 
+# TODO: Kill Pygame after game completion, don't crash if someone exits (or crashes)!
+
 
 class CheckerBoardServer(CheckerBoardGUI):
     def __init__(self, player_sockets):

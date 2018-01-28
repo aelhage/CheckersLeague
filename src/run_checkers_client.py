@@ -11,14 +11,22 @@ CHANGE LOG:
 
 from utils.jsonsocket import *
 from msgs.messages import *
+from players.simple_ai import SimpleAI
+from board import CheckerBoard
+import sys
+import signal
+
+cc = object
 
 
 class CheckersClient:
-    def __init__(self, name, host, port):
+    def __init__(self, name, host, port, player):
         self._host = host
         self._port = port
         self._name = name
         self._client = Client()
+
+        self.player = player
 
         self.state = "NOT_CONNECTED"
 
@@ -63,7 +71,7 @@ class CheckersClient:
                 w4o = WaitingForOpponent()
                 w4o.from_dict(response)
 
-                if w4o.id != MESSAGE_IDS["WAITING_FOR_OPPONENT"] or w4o.flag is None:
+                if w4o.id != MESSAGE_IDS["WAITING_FOR_OPPONENT"].value or w4o.flag is None:
                     raise Exception("INVALID MESSAGE")
                 elif w4o.flag is True:
                     print("[.] Waiting for opponent...")
@@ -79,18 +87,25 @@ class CheckersClient:
                 gr.from_dict(response)
 
                 # TODO: More error checking...
-                if gr.id != MESSAGE_IDS["GAME_RULES"]:
+                if gr.id != MESSAGE_IDS["GAME_RULES"].value:
                     raise Exception("INVALID MESSAGE")
 
                 self._color = gr.player_color
                 self._timeout = gr.time_limit
                 self._board_size = gr.board_size
 
+                print("[+] Rules Received!")
+
+                try:
+                    self.board = CheckerBoard(self._board_size)
+
+
                 try:
                     self.player(self._board_size, self._timeout)
                 except:
                     raise Exception("Could not launch AI Program")
 
+                print("[+] Launched the AI!")
                 self.state = "GAME_LAUNCHED"
 
             elif self.state == "GAME_LAUNCHED":
@@ -99,16 +114,24 @@ class CheckersClient:
                 bg.from_dict(response)
 
                 # TODO: More error checking...
-                if bg.id != MESSAGE_IDS["BEGIN_GAME"]:
+                if bg.id != MESSAGE_IDS["BEGIN_GAME"].value:
                     raise Exception("INVALID MESSAGE")
 
-                self.state
+                print("[+] Time to play!")
+                self.state = "PLAYING"
+
+
+
+    def shutdown(self):
+        print("[-] Shutting Down...")
+        self._client.close()
 
 
 def signal_handler(signal, frame):
     print("[-] Ctrl+C!  Shutting down...")
-    gs.shutdown()
+    cc.shutdown()
     sys.exit(0)
+
 
 def main():
     """ main()
@@ -121,12 +144,11 @@ def main():
     signal.signal(signal.SIGINT, signal_handler)
 
     # Instantiate the game server
-    gs = GameServer(2004, 0.1, 10, 2)
+    cc = CheckersClient("SimpleAI", socket.gethostname(), 2004, SimpleAI)
     try:
-        gs.open_socket()
-        gs.run()
+        cc.play()
     finally:
-        client.close()
+        cc.shutdown()
 
 
 if __name__ == '__main__':
