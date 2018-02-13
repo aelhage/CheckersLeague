@@ -1,11 +1,11 @@
 from board import CheckerBoard
 from players.interface import AbstractPlayer
-from players.console import ConsolePlayer
 from players.simple_ai import SimpleAI
 from threading import Thread
 import copy
 from random import choice
 import pygame
+import time
 
 
 BLACK = (0, 0, 0)
@@ -52,6 +52,12 @@ class CheckerBoardGUI:
             ret_val = []  # list representing move returned from player
             t = Thread(target=player.move, args=(copy.deepcopy(self._cb), self._time_limit, ret_val))
             t.start()
+            end_time = time.monotonic() + self._time_limit
+            while t.isAlive() and time.monotonic() < end_time:
+                for event in pygame.event.get():
+                    if event.type == pygame.QUIT:
+                        return
+                time.sleep(0.05)
             t.join(self._time_limit)
             if not self._cb.execute_move(ret_val):
                 print('Invalid move {} by player {}'
