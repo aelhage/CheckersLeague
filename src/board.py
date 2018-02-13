@@ -220,10 +220,14 @@ class CheckerBoard:
         :param w_or_b: 'w' for white player pieces, 'b' for black player pieces. Other values invalid.
         :returns list: List of location tuples
         """
-        return [(ix, iy)
+        locs = [(ix, iy)
                 for ix, row in enumerate(self._board)
                 for iy, i in enumerate(row)
                 if isinstance(i, str) and i.lower() == w_or_b]
+        if w_or_b == 'b':
+            return locs[::-1]
+        else:
+            return locs
 
 
 def main():
